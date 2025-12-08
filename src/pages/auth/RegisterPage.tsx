@@ -17,7 +17,7 @@ export default function RegisterPage() {
   });
 
   const [validationError, setValidationError] = useState('');
-  const { register, isLoading, error } = useAuthStore();
+  const { register, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
 
   const handleChange = (
@@ -28,6 +28,7 @@ export default function RegisterPage() {
       [e.target.name]: e.target.value,
     });
     setValidationError('');
+    if (error) clearError();
   };
 
   const validatePassword = (password: string): string | null => {
