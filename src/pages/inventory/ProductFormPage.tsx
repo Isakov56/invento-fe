@@ -245,7 +245,7 @@ export default function ProductFormPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <button
-        onClick={() => navigate('/inventory/products')}
+        onClick={() => navigate('/inventory')}
         className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6"
       >
         <ArrowLeft className="w-5 h-5" />
@@ -414,7 +414,7 @@ export default function ProductFormPage() {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => navigate('/inventory/products')}
+            onClick={() => navigate('/inventory')}
             className="btn btn-secondary flex-1"
             disabled={saveMutation.isPending || isUploadingImage}
           >
