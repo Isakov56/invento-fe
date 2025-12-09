@@ -32,6 +32,14 @@ api.interceptors.response.use(
   (error: AxiosError<{ error?: string; message?: string }>) => {
     const status = error.response?.status;
     const errorMessage = error.response?.data?.error || error.response?.data?.message;
+    const config = error.config;
+
+    // Check if this is a search request (SKU, barcode, or general search lookup)
+    const isSearchRequest =
+      config?.method === 'get' &&
+      (config?.url?.includes('/variants/sku/') ||
+        config?.url?.includes('/variants/barcode/') ||
+        config?.url?.includes('/variants/search'));
 
     if (status === 401) {
       // Unauthorized - clear token and redirect to login
@@ -45,8 +53,10 @@ api.interceptors.response.use(
         errorMessage || i18n.t('auth.noPermission')
       );
     } else if (status === 404) {
-      // Not found
-      useToastStore.getState().error(errorMessage || i18n.t('errors.resourceNotFound'));
+      // Not found - don't show toast for search requests (they naturally return 404 when not found)
+      if (!isSearchRequest) {
+        useToastStore.getState().error(errorMessage || i18n.t('errors.resourceNotFound'));
+      }
     } else if (status === 400) {
       // Bad request
       useToastStore.getState().error(errorMessage || i18n.t('errors.invalidRequest'));

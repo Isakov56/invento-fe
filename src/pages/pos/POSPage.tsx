@@ -20,6 +20,9 @@ import { transactionsService } from '../../services/transactions.service';
 import { storesService } from '../../services/stores.service';
 import { useAuthStore } from '../../store/authStore';
 import { useSettings } from '../../hooks/useSettings';
+import { usePOSSearchStore } from '../../store/posSearchStore';
+import { usePOSVariantsCache } from '../../hooks/usePOSVariantsCache';
+import { calculateTotalScore } from '../../utils/search';
 import { PaymentMethod } from '../../types';
 import type { ProductVariant, CartItem } from '../../types';
 
@@ -29,14 +32,19 @@ export default function POSPage() {
   const queryClient = useQueryClient();
   const { formatPrice, calculateTax, taxRate, receiptHeader, receiptFooter } = useSettings();
 
-  // State
-  const [searchQuery, setSearchQuery] = useState('');
+  // Zustand store for POS search
+  const { searchQuery, searchResults, allVariants, setSearchQuery, setSearchResults } = usePOSSearchStore();
+
+  // Load and cache all variants for fuzzy search
+  usePOSVariantsCache();
+
+  // Local state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [amountPaid, setAmountPaid] = useState('');
-  const [searchResults, setSearchResults] = useState<ProductVariant[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState(user?.storeId || '');
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Fetch stores
   const { data: stores = [] } = useQuery({
@@ -50,33 +58,67 @@ export default function POSPage() {
   const total = subtotal + tax;
   const change = parseFloat(amountPaid || '0') - total;
 
-  // Search for products by SKU or barcode
-  const handleSearch = async (query: string) => {
+  // Client-side fuzzy search with debouncing
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.length < 2) {
+    
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    if (query.length < 1) {
       setSearchResults([]);
       return;
     }
 
-    try {
-      // Try to find by SKU first
+    // Debounce search - wait 300ms before searching
+    const timeout = setTimeout(async () => {
       try {
-        const variant = await variantsService.getBySku(query);
-        setSearchResults([variant]);
-        return;
-      } catch {}
+        // Try exact match by SKU first
+        if (query.length >= 2) {
+          try {
+            const variant = await variantsService.getBySku(query);
+            setSearchResults([variant]);
+            return;
+          } catch {
+            // Continue to next search method
+          }
 
-      // Try barcode
-      try {
-        const variant = await variantsService.getByBarcode(query);
-        setSearchResults([variant]);
-      } catch {
+          // Try exact barcode match
+          try {
+            const variant = await variantsService.getByBarcode(query);
+            setSearchResults([variant]);
+            return;
+          } catch {
+            // Continue to fuzzy search
+          }
+        }
+
+        // Fall back to client-side fuzzy search from all variants
+        const results = (allVariants || [])
+          .map((variant) => ({
+            variant,
+            score: calculateTotalScore(
+              query,
+              variant.sku,
+              variant.barcode,
+              variant.product?.name || ''
+            ),
+          }))
+          .filter((result) => result.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10)
+          .map((result) => result.variant);
+
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
         setSearchResults([]);
       }
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchResults([]);
-    }
+    }, 300);
+
+    setSearchTimeout(timeout);
   };
 
   // Add item to cart
@@ -417,33 +459,45 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* Search Results */}
+        {/* Search Results / Suggestions */}
         {searchResults.length > 0 && (
-          <div className="space-y-2 mb-6">
+          <div className="space-y-2 mb-6 max-h-96 overflow-y-auto">
             {searchResults.map((variant) => (
               <button
                 key={variant.id}
-                onClick={() => addToCart(variant)}
-                className="w-full card hover:shadow-md transition-shadow text-left"
+                onClick={() => {
+                  addToCart(variant);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}
+                className="w-full card hover:shadow-md transition-shadow text-left group"
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400">
                       {variant.product?.name}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      SKU: {variant.sku} • {variant.size && `Size: ${variant.size}`}{' '}
-                      {variant.color && `• Color: ${variant.color}`}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      SKU: <span className="font-medium">{variant.sku}</span>
+                      {variant.size && ` • Size: ${variant.size}`}
+                      {variant.color && ` • Color: ${variant.color}`}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {t('pos.stock')}: {variant.stockQuantity}
-                    </p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+                        Stock: {variant.stockQuantity}
+                      </span>
+                      {variant.stockQuantity <= 0 && (
+                        <span className="text-xs bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-red-700 dark:text-red-400">
+                          Out of Stock
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right ml-4 flex-shrink-0">
                     <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
                       {formatPrice(variant.sellingPrice)}
                     </p>
-                    <Plus className="w-5 h-5 text-gray-400 ml-auto" />
+                    <Plus className="w-5 h-5 text-gray-400 ml-auto mt-2 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
                   </div>
                 </div>
               </button>
