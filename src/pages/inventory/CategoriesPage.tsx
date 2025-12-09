@@ -79,13 +79,13 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 lg:p-6">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('categories.title')}</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('categories.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400">{t('categories.subtitle')}</p>
         </div>
-        <button onClick={() => openModal()} className="btn btn-primary flex items-center gap-2">
+        <button onClick={() => openModal()} className="btn btn-primary flex items-center justify-center gap-2 w-full lg:w-auto">
           <Plus className="w-5 h-5" />
           {t('categories.addCategory')}
         </button>

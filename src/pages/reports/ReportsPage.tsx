@@ -145,11 +145,11 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">
             {t('reports.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -158,29 +158,31 @@ export default function ReportsPage() {
         </div>
 
         {/* Date Range Selector & Export */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowExportDialog(true)}
-            className="btn btn-primary flex items-center gap-2"
+            className="btn btn-primary flex items-center justify-center gap-2 order-2 sm:order-1"
           >
             <Download className="w-5 h-5" />
-            {t('common.export')}
+            <span>{t('common.export')}</span>
           </button>
-          <Calendar className="w-5 h-5 text-gray-500" />
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="input w-40"
-          >
-            <option value="7days">{t('reports.last7Days')}</option>
-            <option value="30days">{t('reports.last30Days')}</option>
-            <option value="90days">{t('reports.last90Days')}</option>
-            <option value="1year">{t('reports.lastYear')}</option>
-          </select>
+          <div className="flex items-center gap-2 sm:gap-3 order-1 sm:order-2">
+            <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="input flex-1 sm:w-40"
+            >
+              <option value="7days">{t('reports.last7Days')}</option>
+              <option value="30days">{t('reports.last30Days')}</option>
+              <option value="90days">{t('reports.last90Days')}</option>
+              <option value="1year">{t('reports.lastYear')}</option>
+            </select>
+          </div>
           <select
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value as any)}
-            className="input w-32"
+            className="input flex-1 sm:w-32 order-3"
           >
             <option value="day">{t('reports.byDay')}</option>
             <option value="week">{t('reports.byWeek')}</option>
