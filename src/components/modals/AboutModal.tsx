@@ -77,10 +77,10 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
           {/* Footer Info */}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              <span className="font-medium">{t('about.developer')}:</span> Your Company Name
+              <span className="font-medium">{t('about.developer')}:</span> Isakovs company
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              <span className="font-medium">{t('about.license')}:</span> MIT License
+              <span className="font-medium">{t('about.license')}:</span> SOME License
             </p>
           </div>
 
