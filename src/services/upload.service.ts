@@ -61,8 +61,22 @@ export const uploadService = {
 
   /**
    * Get full image URL
+   * Handles both Cloudinary URLs and local uploads
    */
   getImageUrl: (path: string): string => {
+    if (!path) return '';
+    
+    // If already a full URL (http/https), return as-is
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    
+    // If it's a Cloudinary path (contains res.cloudinary.com), reconstruct the URL
+    if (path.includes('res.cloudinary.com')) {
+      return `https://${path}`;
+    }
+    
+    // For local uploads, prepend API base URL
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     return `${API_BASE.replace('/api', '')}${path}`;
   },
