@@ -44,7 +44,7 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [amountPaid, setAmountPaid] = useState('');
   const [selectedStoreId, setSelectedStoreId] = useState(user?.storeId || '');
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [searchTimeout, setSearchTimeout] = useState<number | null>(null);
 
   // Fetch stores
   const { data: stores = [] } = useQuery({
