@@ -24,7 +24,8 @@ import { usePOSSearchStore } from '../../store/posSearchStore';
 import { usePOSVariantsCache } from '../../hooks/usePOSVariantsCache';
 import { calculateTotalScore } from '../../utils/search';
 import { PaymentMethod } from '../../types';
-import type { ProductVariant, CartItem } from '../../types';
+import type { ProductVariant, CartItem, Transaction } from '../../types';
+import type { AxiosError } from 'axios';
 
 export default function POSPage() {
   const { t } = useTranslation();
@@ -41,6 +42,7 @@ export default function POSPage() {
   // Local state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCartDrawer, setShowCartDrawer] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [amountPaid, setAmountPaid] = useState('');
   const [selectedStoreId, setSelectedStoreId] = useState(user?.storeId || '');
@@ -187,7 +189,7 @@ export default function POSPage() {
   };
 
   // Print receipt
-  const printReceipt = (transaction: any, cartItems: CartItem[], storeId: string) => {
+  const printReceipt = (transaction: Transaction, cartItems: CartItem[], storeId: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -369,8 +371,11 @@ export default function POSPage() {
       setAmountPaid('');
       alert(t('pos.saleCompleted'));
     },
-    onError: (error: any) => {
-      alert(error.response?.data?.error || 'Failed to complete sale');
+    onError: (error: AxiosError) => {
+      const errorMessage = typeof error.response?.data === 'object' && error.response?.data !== null && 'error' in error.response.data 
+        ? (error.response.data as { error: string }).error 
+        : 'Failed to complete sale';
+      alert(errorMessage);
     },
   });
 
@@ -418,7 +423,7 @@ export default function POSPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-gray-50 dark:bg-gray-900">
-      {/* Left Panel - Products Search */}
+      {/* Left Panel - Products Search (Full width on mobile, flex-1 on desktop) */}
       <div className="flex-1 p-4 lg:p-6 overflow-y-auto">
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{t('pos.title')}</h1>
@@ -516,8 +521,130 @@ export default function POSPage() {
         )}
       </div>
 
-      {/* Right Panel - Cart */}
-      <div className="w-full lg:w-[400px] bg-white dark:bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 flex flex-col">
+      {/* Floating Cart Button - Mobile Only */}
+      <button
+        onClick={() => setShowCartDrawer(true)}
+        className="lg:hidden fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg flex items-center gap-2 z-40"
+      >
+        <ShoppingCart className="w-6 h-6" />
+        <span className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+          {cart.length}
+        </span>
+      </button>
+
+      {/* Cart Drawer - Mobile/Tablet */}
+      {showCartDrawer && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowCartDrawer(false)}
+          />
+
+          {/* Drawer */}
+          <div className="absolute right-0 bottom-0 w-full h-1/2 md:h-full md:max-w-md bg-white dark:bg-gray-800 shadow-lg flex flex-col animate-in slide-in-from-bottom md:slide-in-from-right duration-300">
+            {/* Cart Header */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('pos.cart')}</h2>
+              <button
+                onClick={() => setShowCartDrawer(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Cart Items */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {cart.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('pos.cartEmpty')}</p>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.variantId} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm">
+                          {item.variant.product?.name}
+                        </h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {item.variant.size && `${item.variant.size} • `}
+                          {item.variant.sku}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.variantId)}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => updateQuantity(item.variantId, -1)}
+                          className="p-1 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-6 text-center font-medium text-gray-900 dark:text-white text-sm">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.variantId, 1)}
+                          className="p-1 rounded bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {formatPrice(item.unitPrice)}
+                        </p>
+                        <p className="font-bold text-gray-900 dark:text-white text-sm">
+                          {formatPrice(item.subtotal)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Cart Summary */}
+            {cart.length > 0 && (
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <div className="flex justify-between text-gray-700 dark:text-gray-300 text-sm">
+                  <span>{t('common.subtotal')}</span>
+                  <span className="font-medium">{formatPrice(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-gray-700 dark:text-gray-300 text-sm">
+                  <span>{t('common.tax')} ({taxRate}%)</span>
+                  <span className="font-medium">{formatPrice(tax)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <span>{t('pos.totalAmount')}</span>
+                  <span>{formatPrice(total)}</span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowCartDrawer(false);
+                    handleCheckout();
+                  }}
+                  disabled={cart.length === 0}
+                  className="w-full btn btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('pos.checkout')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Right Panel - Cart (Desktop Only) */}
+      <div className="hidden lg:flex w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-col h-full">
         {/* Cart Header */}
         <div className="p-4 lg:p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
