@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Package, FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ProductsPage from './ProductsPage';
@@ -6,7 +7,16 @@ import CategoriesPage from './CategoriesPage';
 
 export default function InventoryPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products');
+
+  // Set active tab from URL parameter on mount
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'categories') {
+      setActiveTab('categories');
+    }
+  }, [searchParams]);
 
   return (
     <div>

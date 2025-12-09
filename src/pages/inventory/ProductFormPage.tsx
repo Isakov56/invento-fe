@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Upload, X, Loader2, Plus, Edit, Trash2, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -312,12 +312,12 @@ export default function ProductFormPage() {
               {categories.length === 0 && (
                 <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
                   {t('products.deleteConfirm')}{' '}
-                  <a
-                    href="/inventory/categories"
+                  <Link
+                    to="/inventory?tab=categories"
                     className="underline font-medium hover:text-amber-700 dark:hover:text-amber-300"
                   >
                     {t('categories.addCategory')}
-                  </a>{' '}
+                  </Link>{' '}
                   {t('products.createFirst')}
                 </p>
               )}
