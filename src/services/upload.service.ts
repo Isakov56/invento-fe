@@ -53,10 +53,17 @@ export const uploadService = {
   },
 
   /**
-   * Delete an uploaded image
+   * Delete an uploaded image from Cloudinary
+   * @param imageUrl - Full Cloudinary URL of the image to delete
    */
-  deleteImage: async (filename: string): Promise<void> => {
-    await api.delete(`/upload/image/${filename}`);
+  deleteImage: async (imageUrl: string): Promise<void> => {
+    if (!imageUrl) {
+      throw new Error('Image URL is required for deletion');
+    }
+    
+    // URL-encode the full image URL since it's being passed as a path parameter
+    const encodedUrl = encodeURIComponent(imageUrl);
+    await api.delete(`/upload/image/${encodedUrl}`);
   },
 
   /**
