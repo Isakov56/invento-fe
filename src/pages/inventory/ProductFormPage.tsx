@@ -35,6 +35,7 @@ export default function ProductFormPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string>(''); // Track original image for deletion
 
   // Variant management
   const [showVariantModal, setShowVariantModal] = useState(false);
@@ -90,6 +91,7 @@ export default function ProductFormPage() {
       });
       if (product.imageUrl) {
         setImagePreview(uploadService.getImageUrl(product.imageUrl));
+        setOriginalImageUrl(product.imageUrl); // Track original for potential deletion
       }
     }
   }, [product]);
@@ -97,6 +99,17 @@ export default function ProductFormPage() {
   // Create/Update product mutations
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // Handle image deletion if user removed the image
+      if (originalImageUrl && !data.imageUrl && !imageFile) {
+        // Image was removed, delete from Cloudinary
+        try {
+          await uploadService.deleteImage(originalImageUrl);
+        } catch (error) {
+          console.error('Failed to delete image from Cloudinary:', error);
+          // Don't fail the product save if image deletion fails
+        }
+      }
+
       // Upload image if selected
       let imageUrl = data.imageUrl;
       if (imageFile) {
@@ -104,6 +117,16 @@ export default function ProductFormPage() {
         try {
           const uploadResult = await uploadService.uploadImage(imageFile);
           imageUrl = uploadResult.url;
+
+          // If there was an original image and it's different, delete the old one
+          if (originalImageUrl && originalImageUrl !== imageUrl) {
+            try {
+              await uploadService.deleteImage(originalImageUrl);
+            } catch (error) {
+              console.error('Failed to delete old image from Cloudinary:', error);
+              // Don't fail the save if old image deletion fails
+            }
+          }
         } finally {
           setIsUploadingImage(false);
         }
@@ -119,6 +142,8 @@ export default function ProductFormPage() {
     },
     onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      // Update the original image URL after successful save
+      setOriginalImageUrl(data.imageUrl || '');
       if (!isEditing) {
         // Navigate to the new product's edit page to add variants
         navigate(`/inventory/products/${data.id}/edit`);
@@ -167,6 +192,7 @@ export default function ProductFormPage() {
     setImageFile(null);
     setImagePreview('');
     setFormData({ ...formData, imageUrl: '' });
+    // Note: actual Cloudinary deletion happens in saveMutation
   };
 
   const handleSubmit = (e: React.FormEvent) => {
