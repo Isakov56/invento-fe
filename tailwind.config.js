@@ -22,6 +22,28 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }) {
+      addUtilities({
+        '.scrollbar-hide': {
+          '-ms-overflow-style': 'none',
+          'scrollbar-width': 'none',
+          'overflow': '-moz-scrollbars-none',
+          '&::-webkit-scrollbar': {
+            display: 'none',
+            width: '0',
+            height: '0',
+          },
+          '&::-webkit-scrollbar-track': {
+            display: 'none',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            display: 'none',
+          },
+        },
+      });
+    },
+  ],
   darkMode: 'class',
 }
+

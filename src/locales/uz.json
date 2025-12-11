@@ -293,7 +293,9 @@
     "potentialProfit": "Potentsial foyda",
     "totalItems": "Jami mahsulotlar",
     "costValue": "Tannarx qiymati",
-    "sellingValue": "Sotish qiymati"
+    "sellingValue": "Sotish qiymati",
+    "dataRefreshed": "Ma'lumotlar muvaffaqiyatli yangilandi! Endi sizda eng so'nggi ma'lumotlar bor.",
+    "exportError": "Ma'lumotlarni eksport qilishda xatolik"
   },
   "team": {
     "title": "Jamoa",

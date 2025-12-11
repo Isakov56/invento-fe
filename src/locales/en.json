@@ -293,7 +293,9 @@
     "potentialProfit": "Potential Profit",
     "totalItems": "Total Items",
     "costValue": "Cost Value",
-    "sellingValue": "Selling Value"
+    "sellingValue": "Selling Value",
+    "dataRefreshed": "Data refreshed successfully! You now have the most recent data.",
+    "exportError": "Error exporting data"
   },
   "team": {
     "title": "Team",

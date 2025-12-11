@@ -9,6 +9,7 @@ import { variantsService } from '../../services/variants.service';
 import { uploadService } from '../../services/upload.service';
 import { storesService } from '../../services/stores.service';
 import { useAuthStore } from '../../store/authStore';
+import SkeletonLoader from '../../components/common/SkeletonLoader';
 import type { ProductVariant } from '../../types';
 
 export default function ProductFormPage() {
@@ -262,8 +263,93 @@ export default function ProductFormPage() {
 
   if (isEditing && (isLoadingProduct || isLoadingVariants)) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-6 max-w-4xl mx-auto">
+        {/* Back Button Skeleton */}
+        <SkeletonLoader className="w-20 h-6 mb-6" />
+
+        {/* Title Skeleton */}
+        <SkeletonLoader className="w-48 h-10 mb-6" />
+
+        {/* Form Card Skeleton */}
+        <div className="card space-y-6 mb-6">
+          {/* Section Title */}
+          <SkeletonLoader className="w-32 h-6" />
+
+          {/* Grid layout with form fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Full width field - Product Name */}
+            <div className="md:col-span-2 space-y-2">
+              <SkeletonLoader className="w-32 h-4" />
+              <SkeletonLoader className="w-full h-10" />
+            </div>
+
+            {/* Full width field - Description */}
+            <div className="md:col-span-2 space-y-2">
+              <SkeletonLoader className="w-24 h-4" />
+              <SkeletonLoader className="w-full h-24" />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-2">
+              <SkeletonLoader className="w-20 h-4" />
+              <SkeletonLoader className="w-full h-10" />
+            </div>
+
+            {/* Brand */}
+            <div className="space-y-2">
+              <SkeletonLoader className="w-16 h-4" />
+              <SkeletonLoader className="w-full h-10" />
+            </div>
+
+            {/* Image Upload */}
+            <div className="md:col-span-2 space-y-2">
+              <SkeletonLoader className="w-24 h-4" />
+              <SkeletonLoader className="w-full h-40" />
+            </div>
+
+            {/* Active Toggle */}
+            <div className="space-y-2">
+              <SkeletonLoader className="w-24 h-4" />
+              <SkeletonLoader className="w-16 h-10" />
+            </div>
+          </div>
+
+          {/* Save Button Skeleton */}
+          <SkeletonLoader className="w-full h-12" />
+        </div>
+
+        {/* Variants Card Skeleton */}
+        <div className="card space-y-6">
+          {/* Section Title */}
+          <SkeletonLoader className="w-32 h-6" />
+
+          {/* Add Variant Button Skeleton */}
+          <SkeletonLoader className="w-32 h-10" />
+
+          {/* Variant Items Skeleton */}
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+                {/* Variant header */}
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1 space-y-2">
+                    <SkeletonLoader className="w-24 h-4" />
+                    <SkeletonLoader className="w-32 h-5" />
+                  </div>
+                  <SkeletonLoader className="w-20 h-10" />
+                </div>
+
+                {/* Variant details grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <SkeletonLoader className="w-full h-10" />
+                  <SkeletonLoader className="w-full h-10" />
+                  <SkeletonLoader className="w-full h-10" />
+                  <SkeletonLoader className="w-full h-10" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

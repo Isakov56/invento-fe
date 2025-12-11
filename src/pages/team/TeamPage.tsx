@@ -6,6 +6,7 @@ import { employeeService, type Employee, type CreateEmployeeData } from '../../s
 import { useAuthStore } from '../../store/authStore';
 import { UserRole } from '../../types';
 import { storesService } from '../../services/stores.service';
+import SkeletonLoader from '../../components/common/SkeletonLoader';
 
 export default function TeamPage() {
   const { t } = useTranslation();
@@ -40,10 +41,45 @@ export default function TeamPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-          <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
+      <div className="p-4 lg:p-6">
+        {/* Header Skeleton */}
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
+          <div className="flex-1">
+            <SkeletonLoader className="h-8 w-32 mb-2 rounded" />
+            <SkeletonLoader className="h-4 w-64 rounded" />
+          </div>
+          <SkeletonLoader className="h-10 w-full lg:w-40 rounded" />
+        </div>
+
+        {/* Employee Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="card p-4 sm:p-6">
+              {/* Avatar Skeleton */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3 flex-1">
+                  <SkeletonLoader className="h-12 w-12 rounded-full" />
+                  <div className="flex-1">
+                    <SkeletonLoader className="h-4 w-24 mb-2 rounded" />
+                    <SkeletonLoader className="h-3 w-32 rounded" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Details Skeleton */}
+              <div className="space-y-3">
+                <SkeletonLoader className="h-3 w-full rounded" />
+                <SkeletonLoader className="h-3 w-5/6 rounded" />
+                <SkeletonLoader className="h-3 w-4/5 rounded" />
+              </div>
+
+              {/* Action Buttons Skeleton */}
+              <div className="flex gap-2 mt-4">
+                <SkeletonLoader className="flex-1 h-9 rounded" />
+                <SkeletonLoader className="flex-1 h-9 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

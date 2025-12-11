@@ -26,16 +26,20 @@ import {
   Download,
   FileText,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import { reportsService } from '../../services/reports.service';
+import { useToastStore } from '../../store/toastStore';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 export default function ReportsPage() {
   const { t } = useTranslation();
+  const { success } = useToastStore();
   const [dateRange, setDateRange] = useState('7days');
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day');
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [exportOptions, setExportOptions] = useState({
     salesData: true,
     topProducts: true,
@@ -46,20 +50,25 @@ export default function ReportsPage() {
   // Calculate date range - memoized to prevent infinite re-renders
   const { startDate, endDate } = useMemo(() => {
     const end = new Date();
-    const start = new Date();
+    end.setHours(23, 59, 59, 999); // End of today
+    const start = new Date(end); // Start from end date
 
     switch (dateRange) {
       case '7days':
-        start.setDate(end.getDate() - 7);
+        start.setDate(start.getDate() - 6); // 7 days including today
+        start.setHours(0, 0, 0, 0);
         break;
       case '30days':
-        start.setDate(end.getDate() - 30);
+        start.setDate(start.getDate() - 29);
+        start.setHours(0, 0, 0, 0);
         break;
       case '90days':
-        start.setDate(end.getDate() - 90);
+        start.setDate(start.getDate() - 89);
+        start.setHours(0, 0, 0, 0);
         break;
       case '1year':
         start.setFullYear(end.getFullYear() - 1);
+        start.setHours(0, 0, 0, 0);
         break;
     }
 
@@ -70,25 +79,51 @@ export default function ReportsPage() {
   }, [dateRange]);
 
   // Fetch reports data
-  const { data: salesData = [], isLoading: salesLoading } = useQuery({
+  const { data: salesData = [], isLoading: salesLoading, refetch: refetchSalesData } = useQuery({
     queryKey: ['sales-report', startDate, endDate, groupBy],
     queryFn: () => reportsService.getSalesReport({ startDate, endDate, groupBy }),
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const { data: topProducts = [], isLoading: topProductsLoading } = useQuery({
+  const { data: topProducts = [], isLoading: topProductsLoading, refetch: refetchTopProducts } = useQuery({
     queryKey: ['top-products', startDate, endDate],
     queryFn: () => reportsService.getTopProducts({ startDate, endDate, limit: 5 }),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: paymentMethods = [], isLoading: paymentLoading } = useQuery({
+  const { data: paymentMethods = [], isLoading: paymentLoading, refetch: refetchPayments } = useQuery({
     queryKey: ['payment-methods', startDate, endDate],
     queryFn: () => reportsService.getPaymentMethodBreakdown({ startDate, endDate }),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: inventoryValue, isLoading: inventoryLoading } = useQuery({
+  const { data: inventoryValue, isLoading: inventoryLoading, refetch: refetchInventory } = useQuery({
     queryKey: ['inventory-value'],
     queryFn: () => reportsService.getInventoryValue(),
+    retry: 1,
+    staleTime: 30 * 60 * 1000, // 30 minutes
   });
+
+  // Refresh all data
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetchSalesData(),
+        refetchTopProducts(),
+        refetchPayments(),
+        refetchInventory(),
+      ]);
+      success(t('reports.dataRefreshed') || 'Data refreshed successfully! You now have the most recent data.');
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Calculate totals from sales data
   const totals = salesData.reduce(
@@ -166,7 +201,15 @@ export default function ReportsPage() {
             <Download className="w-5 h-5" />
             <span>{t('common.export')}</span>
           </button>
-          <div className="flex items-center gap-2 sm:gap-3 order-1 sm:order-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="btn btn-secondary flex items-center justify-center gap-2 order-3 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh latest data"
+          >
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+          <div className="flex items-center gap-2 sm:gap-3 order-1 sm:order-3">
             <Calendar className="w-5 h-5 text-gray-500 flex-shrink-0" />
             <select
               value={dateRange}
@@ -288,39 +331,83 @@ export default function ReportsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">{t('reports.totalSales')}</span>
-            <DollarSign className="w-5 h-5 text-green-600" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('reports.totalSales')}</h3>
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            ${totals.revenue.toFixed(2)}
-          </p>
+          {salesLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+            </div>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                ${totals.revenue.toFixed(2)}
+              </p>
+            </>
+          )}
         </div>
 
         <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.todayTransactions')}</span>
-            <ShoppingCart className="w-5 h-5 text-blue-600" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.todayTransactions')}</h3>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{totals.transactions}</p>
+          {salesLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+            </div>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{totals.transactions}</p>
+            </>
+          )}
         </div>
 
         <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.items')}</span>
-            <Package className="w-5 h-5 text-purple-600" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('dashboard.items')}</h3>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Package className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{totals.items}</p>
+          {salesLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+            </div>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{totals.items}</p>
+            </>
+          )}
         </div>
 
         <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">{t('reports.avgOrderValue')}</span>
-            <TrendingUp className="w-5 h-5 text-orange-600" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('reports.avgOrderValue')}</h3>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            ${totals.transactions > 0 ? (totals.revenue / totals.transactions).toFixed(2) : '0.00'}
-          </p>
+          {salesLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">Loading...</span>
+            </div>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                ${totals.transactions > 0 ? (totals.revenue / totals.transactions).toFixed(2) : '0.00'}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
